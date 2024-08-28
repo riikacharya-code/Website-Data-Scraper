@@ -3,15 +3,7 @@ import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-
-/*
-const { OPENAI_API_KEY } = process.env;
-
-// Set up OpenAI Client
-const openai = new OpenAI({
-    apiKey: OPENAI_API_KEY,
-});
-*/
+import { exec } from 'child_process';
 
 
 const openai = new OpenAI({
@@ -20,9 +12,6 @@ const openai = new OpenAI({
 
 
 const InstructionFormat = z.object({
-    
-    "list":z.array(
-    z.object({
         "subject": z.string(),
         "sync_log_id": z.string(),
         "img_url": z.array(z.string()),
@@ -52,8 +41,6 @@ const InstructionFormat = z.object({
         "user_id": z.literal("smNJ4JT10YPDiZnNkAOauc7j1v52"),
         "no_cat_flag": z.string(),
         "dress_category": z.string()
-    })
-)
 });
 
 
@@ -101,8 +88,6 @@ async function reduceHtmlContent(html) {
         }
       });
 
-    
-  
   
     $('[class*="ad"], [id*="ad"]').each((i, el) => {
         if (isNonEssential(el)) {
@@ -122,21 +107,32 @@ async function reduceHtmlContent(html) {
 
 async function run(){
     try {
-        const htmlContent = await getData('https://www.neimanmarcus.com/p/prod259370971');
+        const htmlContent = await getData('https://www.neimanmarcus.com/p/prod258040262');
 
         if (htmlContent){
-            console.log(htmlContent)
             const reducedContent = await reduceHtmlContent(htmlContent);
-            console.log(reducedContent)
             const completion = await openai.chat.completions.create({
                 model: "gpt-4o-2024-08-06",
                 messages: [
-                { role: "system", content: "Extract the order information for every single from the website HTML. Make sure the order images are not left out. Under no circumstances are you allowed to use fake image urls." },
+                { role: "system", content: "Extract the order information from the website HTML. Make sure the order image is not left out. Under no circumstances are you allowed to use fake image urls." },
                 { role: "user", content: reducedContent },
                 ],
                 response_format: zodResponseFormat(InstructionFormat, "instruction"),
             });
             console.log(completion.choices[0].message.content);
+            const curlCommand = `curl --location 'https://itwirly-50b5c.uc.r.appspot.com/update' \\\n--header 'Content-Type: application/json' \\\n--data-raw '${completion.choices[0].message.content}\n\n'`;
+
+            exec(curlCommand, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error: ${error.message}`);
+                return;
+            }
+            if (stderr) {
+                console.error(`stderr: ${stderr}`);
+                return;
+            }
+            console.log(`stdout: ${stdout}`);
+            });
         } else {
             console.log("No HTML content fetched.");
         }
@@ -155,6 +151,7 @@ async function getHtmlContent(url) {
       console.error('Error fetching the HTML:', error);
     }
 }
+
 
 
 run()
