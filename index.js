@@ -3,13 +3,13 @@ import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { exec } from 'child_process';
 
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
+const url = 'https://itwirly-50b5c.uc.r.appspot.com/update';
 
 const InstructionFormat = z.object({
         "subject": z.string(),
@@ -28,7 +28,7 @@ const InstructionFormat = z.object({
             "subcategories": z.array(z.string())
         }),
         "brand": z.string(),
-        "email_identifier": z.literal("msmahuac@gmail.com_wh_ra_neiman_marcus_WN00001483409"),
+        "email_identifier": z.literal("msmahuac@gmail.com_wh_ra_neiman_marcus_WN00001483409xyz"),
         "cats": z.array(z.string()),
         "vendors": z.string(),
         "ordered_item": z.string(),
@@ -36,7 +36,7 @@ const InstructionFormat = z.object({
         "sender": z.string(),
         "size": z.string(),
         "item_category": z.string(),
-        "msg_id": z.literal("wh_ra_neiman_marcus_WN00001483409"),
+        "msg_id": z.literal("wh_ra_neiman_marcus_WN00001483409xyz"),
         "email_class": z.string(),
         "user_id": z.literal("smNJ4JT10YPDiZnNkAOauc7j1v52"),
         "no_cat_flag": z.string(),
@@ -95,19 +95,24 @@ async function reduceHtmlContent(html) {
         }
       });
     
-    /*if (reducedContent.length > 4096) {
-      reducedContent = reducedContent.substring(0, 4096) + '...';  // Truncate the content
-    }*/
-    
     const mainContent = $('body').html().trim();
     
     return mainContent;
 }
   
 
+async function getHtmlContent(url) {
+    try {
+      const response = await axios.get(url);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching the HTML:', error);
+    }
+}
+
 async function run(){
     try {
-        const htmlContent = await getData('https://www.neimanmarcus.com/p/prod258040262');
+        const htmlContent = await getData('Fir');
 
         if (htmlContent){
             const reducedContent = await reduceHtmlContent(htmlContent);
@@ -120,19 +125,17 @@ async function run(){
                 response_format: zodResponseFormat(InstructionFormat, "instruction"),
             });
             console.log(completion.choices[0].message.content);
-            const curlCommand = `curl --location 'https://itwirly-50b5c.uc.r.appspot.com/update' \\\n--header 'Content-Type: application/json' \\\n--data-raw '${completion.choices[0].message.content}\n\n'`;
+            const data = JSON.parse(completion.choices[0].message.content);
+            
 
-            exec(curlCommand, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Error: ${error.message}`);
-                return;
-            }
-            if (stderr) {
-                console.error(`stderr: ${stderr}`);
-                return;
-            }
-            console.log(`stdout: ${stdout}`);
+            axios.post(url, data)
+            .then(response => {
+                console.log('Response:', response.data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
             });
+
         } else {
             console.log("No HTML content fetched.");
         }
@@ -141,17 +144,6 @@ async function run(){
     }
    
 }
-
-
-async function getHtmlContent(url) {
-    try {
-      const response = await axios.get(url);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching the HTML:', error);
-    }
-}
-
 
 
 run()
