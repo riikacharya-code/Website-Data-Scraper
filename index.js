@@ -1,7 +1,6 @@
 import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
-import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 
@@ -28,7 +27,7 @@ const InstructionFormat = z.object({
             "subcategories": z.array(z.string())
         }),
         "brand": z.string(),
-        "email_identifier": z.literal("msmahuac@gmail.com_wh_ra_neiman_marcus_WN00001483409xyz"),
+        "email_identifier": z.literal("msmahuac@gmail.com_wh_ra_neiman_marcus_WN00001483409xyzaa"),
         "cats": z.array(z.string()),
         "vendors": z.string(),
         "ordered_item": z.string(),
@@ -47,7 +46,11 @@ const InstructionFormat = z.object({
 async function getData(url)
 {
     try {
-        const htmlContent = await getHtmlContent(url);
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const htmlContent = await response.text();
         return htmlContent;
     } catch (error) {
         console.error("Error fetching data:", error);
@@ -100,19 +103,9 @@ async function reduceHtmlContent(html) {
     return mainContent;
 }
   
-
-async function getHtmlContent(url) {
-    try {
-      const response = await axios.get(url);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching the HTML:', error);
-    }
-}
-
 async function run(){
     try {
-        const htmlContent = await getData('Fir');
+        const htmlContent = await getData('https://www.neimanmarcus.com/p/prod256420941');
 
         if (htmlContent){
             const reducedContent = await reduceHtmlContent(htmlContent);
@@ -127,15 +120,20 @@ async function run(){
             console.log(completion.choices[0].message.content);
             const data = JSON.parse(completion.choices[0].message.content);
             
-
-            axios.post(url, data)
-            .then(response => {
-                console.log('Response:', response.data);
-            })
-            .catch(error => {
-                console.error('Error:', error);
+            const postResponse = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
             });
 
+            if (!postResponse.ok) {
+                throw new Error(`HTTP error! status: ${postResponse.status}`);
+            }
+
+            const postData = await postResponse.json();
+            console.log('Response:', postData);
         } else {
             console.log("No HTML content fetched.");
         }
@@ -145,5 +143,4 @@ async function run(){
    
 }
 
-
-run()
+run();
