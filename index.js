@@ -72,17 +72,17 @@ async function reduceHtmlContent(html) {
     const isNonEssential = (el) => {
         const parent = $(el).parent();
 
-        // Check if this parent or any ancestor is preserved
+        
         let currentElement = parent;
 
         while (currentElement.length > 0) {
           if (preservedParents.has(currentElement[0])) {
-            return false; // Don't remove this element
+            return false;
           }
 
           currentElement = currentElement.parent();
         }
-        return true; // This element can be safely removed
+        return true; 
     };
 
     $('script, style, aside, noscript').each((i, el) => {
